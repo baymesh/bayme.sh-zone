@@ -10,8 +10,7 @@ jobs:
       steps:
       - uses: actions/checkout@v3
       - uses: gacts/install-dnscontrol@v1
-      - run: echo ${{ secrets.DISCORD_WEBHOOK }}
-      - run: echo $DISCORD_WEBHOOK
+      - run: env
       - run: dnscontrol preview
       # - run: dnscontrol push
       # - name: Actions Status Discord
