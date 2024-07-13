@@ -12,7 +12,7 @@ jobs:
       - name: Install DNS Control
         uses: gacts/install-dnscontrol@v1
       - name: Run DNSControl
-        run: dnscontrol preview
+        run: dnscontrol push
         env:
           PORKBUN_API_KEY: ${{ secrets.PORKBUN_API_KEY }}
           PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
