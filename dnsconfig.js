@@ -18,6 +18,5 @@ D("bayme.sh", REG_NONE, DnsProvider(DNS_PB),
     A("data", "199.88.158.120"),
     A("mqtt", "216.218.222.55"),
     A("mqtt", "216.218.222.56"),
-    A("mqtt", "216.218.222.57"),
     A("meshview", "54.183.196.7"),
 END);
