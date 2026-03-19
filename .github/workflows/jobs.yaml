@@ -60,24 +60,15 @@ jobs:
             configuration.h
           sparse-checkout-cone-mode: false
 
-      - name: Clone protobufs submodule
+      - name: Clone protobufs from fork
         run: |
           cd firmware
-          git clone --depth 1 https://github.com/meshtastic/protobufs.git protobufs
-          
-      - name: Clone fork protobufs for custom protos
-        run: |
-          cd firmware
-          git clone --depth 50 https://github.com/baymesh/firmware.git fork-temp
-          ls fork-temp/protobufs/meshtastic/ | grep mesh_control || echo "Not in protobufs"
-          ls fork-temp/protobufs-fork/meshtastic/ 2>/dev/null | grep mesh_control || echo "Not in protobufs-fork"
-          cp fork-temp/protobufs-fork/meshtastic/mesh_control.proto protobufs/meshtastic/ 2>/dev/null || \
-          cp fork-temp/protobufs/meshtastic/mesh_control.proto protobufs/meshtastic/ 2>/dev/null || \
-          echo "mesh_control.proto not found in clone"
-          cp fork-temp/protobufs-fork/meshtastic/config.proto protobufs/meshtastic/ 2>/dev/null || true
-          cp fork-temp/protobufs-fork/meshtastic/localonly.proto protobufs/meshtastic/ 2>/dev/null || true
-          rm -rf fork-temp
-          ls protobufs/meshtastic/ | grep mesh
+          git clone --depth 100 https://github.com/baymesh/firmware.git fork-full
+          cp -r fork-full/protobufs/* protobufs/ 2>/dev/null || true
+          cp -r fork-full/protobufs-fork/* protobufs/ 2>/dev/null || true
+          rm -rf fork-full
+          ls protobufs/meshtastic/ | head -5
+          ls protobufs/meshtastic/ | grep mesh_control || echo "mesh_control.proto not found"
 
       - name: Get version
         id: version
