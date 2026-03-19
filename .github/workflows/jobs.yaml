@@ -1,14 +1,35 @@
+name: Build and Publish
+
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'firmware/**'
+      - 'web-flasher/**'
   workflow_dispatch:
+    inputs:
+      skip_webflasher:
+        description: 'Skip web flasher build'
+        required: false
+        default: 'false'
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+env:
+  FIRMWARE_VERSION: '2.7.21'
 
 jobs:
-    run-all:
-      runs-on: ubuntu-latest
-      steps:
-      - uses: actions/checkout@v3
+  dns-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Install DNS Control
         uses: gacts/install-dnscontrol@v1
       - name: Run DNSControl
@@ -22,3 +43,211 @@ jobs:
         if: always()
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
+
+  build-firmware:
+    runs-on: ubuntu-latest
+    container: python:3.11-slim
+    outputs:
+      version: ${{ steps.version.outputs.full_version }}
+    steps:
+      - name: Checkout firmware
+        uses: actions/checkout@v4
+        with:
+          repository: baymesh/bayme.sh-firmware
+          path: firmware
+          sparse-checkout: |
+            src
+            protobufs-fork
+            platformio.ini
+            configuration.h
+          sparse-checkout-cone-mode: false
+
+      - name: Get version
+        id: version
+        run: |
+          cd firmware
+          SHORT=$(git rev-parse --short HEAD)
+          echo "short=$SHORT" >> $GITHUB_OUTPUT
+          echo "full_version=${{ env.FIRMWARE_VERSION }}.$SHORT" >> $GITHUB_OUTPUT
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build nanopb
+        run: |
+          cd firmware
+          wget -q https://jpa.kapsi.fi/nanopb/download/nanopb-0.4.9.1-linux-x86.tar.gz
+          tar xzf nanopb-0.4.9.1-linux-x86.tar.gz
+
+      - name: Regenerate protobufs
+        run: |
+          cd firmware/protobufs-fork
+          ../nanopb-0.4.9.1/generator-bin/protoc --experimental_allow_proto3_optional \
+            "--nanopb_out=-S.cpp -v:../src/mesh/generated/" \
+            -I=. meshtastic/*.proto
+
+      - name: Build RAK4631
+        run: |
+          cd firmware
+          pio run -e rak4631
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-artifacts
+          path: firmware/.pio/build/rak4631/
+          retention-days: 30
+
+  publish-firmware:
+    needs: build-firmware
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-artifacts
+          path: _site/firmware/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Create manifest
+        run: |
+          cd _site/firmware
+          
+          # Get version from file
+          SHORT=$(ls *.uf2 2>/dev/null | head -1 | sed 's/firmware-rak4631-//' | sed 's/.uf2//')
+          VERSION="${{ env.FIRMWARE_VERSION }}.$SHORT"
+          
+          cat > firmware-${VERSION}.json << 'EOF'
+          {
+            "version": "%VERSION%",
+            "build_date": "%DATE%",
+            "targets": [
+              {
+                "board": "rak4631",
+                "firmware": "%FILE%"
+              }
+            ]
+          }
+          EOF
+          
+          sed -i "s/%VERSION%/$VERSION/g; s/%DATE%/$(date -u +%Y-%m-%dT%H:%M:%SZ)/g; s/%FILE%/firmware-rak4631-$VERSION.uf2/g" firmware-${VERSION}.json
+          
+          cat > release_notes.md << 'EOF'
+          # Meshtastic Fork Firmware - Baymesh
+          
+          ## Features
+          
+          ### MeshControl (Port 78)
+          Remote configuration via signed HMAC packets
+          
+          ### Relay Node
+          - Broadcast relay_node: Specify which node rebroadcasts first
+          - DM relay_node preference
+          
+          ### Hop Limit
+          - HOP_MAX = 64
+          
+          ## Building
+          Built from baymesh/bayme.sh-firmware
+          EOF
+          
+          ls -la
+
+      - name: Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+  build-web-flasher:
+    needs: build-firmware
+    if: ${{ inputs.skip_webflasher != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout web-flasher
+        uses: actions/checkout@v4
+        with:
+          repository: baymesh/web-flasher
+          path: web-flasher
+          sparse-checkout: |
+            app.vue
+            components
+            composables
+            i18n
+            nuxt.config.ts
+            package.json
+            pnpm-lock.yaml
+            public
+            stores
+            tailwind.config.js
+            types
+            utils
+            README.md
+            assets
+            locales
+            plugins
+            server
+            i18n.config.ts
+            tailwind.config.js
+            tsconfig.json
+            eslint.config.mjs
+            vitest.config.ts
+            .npmrc
+            .trunk
+          sparse-checkout-cone-mode: false
+
+      - name: Download firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-artifacts
+          path: web-flasher/public/data/firmware/
+
+      - name: Create firmware JSON
+        run: |
+          cd web-flasher/public/data/firmware
+          
+          SHORT=$(ls *.uf2 2>/dev/null | head -1 | sed 's/firmware-rak4631-//' | sed 's/.uf2//')
+          VERSION="${{ env.FIRMWARE_VERSION }}.$SHORT"
+          
+          cat > firmware-${VERSION}.json << EOF
+          {
+            "version": "$VERSION",
+            "targets": [
+              {
+                "board": "rak4631",
+                "firmware": "firmware-rak4631-$VERSION.uf2"
+              }
+            ]
+          }
+          EOF
+          
+          echo "Firmware files:"
+          ls -la
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install deps
+        run: |
+          cd web-flasher
+          pnpm install --frozen-lockfile
+
+      - name: Build
+        run: |
+          cd web-flasher
+          pnpm run build
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web-flasher/.output/public
+          destination_dir: flasher
