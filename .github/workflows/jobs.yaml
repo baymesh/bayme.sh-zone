@@ -68,14 +68,16 @@ jobs:
       - name: Clone fork protobufs for custom protos
         run: |
           cd firmware
-          git clone --depth 1 https://github.com/baymesh/firmware.git fork-temp
-          cp fork-temp/protobufs/meshtastic/mesh_control.proto protobufs/meshtastic/
-          cp fork-temp/protobufs/meshtastic/config.proto protobufs/meshtastic/
-          cp fork-temp/protobufs/meshtastic/localonly.proto protobufs/meshtastic/
-          cp fork-temp/protobufs/meshtastic/mesh.proto protobufs/meshtastic/
-          cp fork-temp/protobufs/meshtastic/admin.proto protobufs/meshtastic/
+          git clone --depth 50 https://github.com/baymesh/firmware.git fork-temp
+          ls fork-temp/protobufs/meshtastic/ | grep mesh_control || echo "Not in protobufs"
+          ls fork-temp/protobufs-fork/meshtastic/ 2>/dev/null | grep mesh_control || echo "Not in protobufs-fork"
+          cp fork-temp/protobufs-fork/meshtastic/mesh_control.proto protobufs/meshtastic/ 2>/dev/null || \
+          cp fork-temp/protobufs/meshtastic/mesh_control.proto protobufs/meshtastic/ 2>/dev/null || \
+          echo "mesh_control.proto not found in clone"
+          cp fork-temp/protobufs-fork/meshtastic/config.proto protobufs/meshtastic/ 2>/dev/null || true
+          cp fork-temp/protobufs-fork/meshtastic/localonly.proto protobufs/meshtastic/ 2>/dev/null || true
           rm -rf fork-temp
-          ls protobufs/meshtastic/
+          ls protobufs/meshtastic/ | grep mesh
 
       - name: Get version
         id: version
