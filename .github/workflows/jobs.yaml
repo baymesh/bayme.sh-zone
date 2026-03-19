@@ -126,9 +126,22 @@ jobs:
           cd zone/web-flasher
           pnpm run build
 
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./zone/web-flasher/.output/public
-          destination_dir: flasher
+      - name: Deploy to main branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd zone
+          
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/baymesh/bayme.sh-zone.git"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git checkout main
+          
+          rm -rf flasher .nojekyll .gitignore web-flasher/.git 2>/dev/null || true
+          cp -r web-flasher/.output/public/. flasher/
+          cp web-flasher/.output/public/.nojekyll . 2>/dev/null || echo "" > .nojekyll
+          
+          git add flasher .nojekyll
+          git commit -m "Deploy flasher $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin main
