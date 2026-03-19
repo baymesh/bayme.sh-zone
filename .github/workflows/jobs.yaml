@@ -63,35 +63,30 @@ jobs:
       - name: Clone protobufs from fork
         run: |
           cd firmware
+          
+          # Get the submodule commit from the firmware repo
           git clone --depth 100 https://github.com/baymesh/firmware.git fork-full
           
-          # Check if protobufs is a submodule
-          if [ -f fork-full/protobufs ]; then
-            echo "protobufs is a file (submodule reference)"
-            cat fork-full/protobufs
-          fi
+          # Read the submodule reference
+          SUBMODULE_COMMIT=$(git ls-tree HEAD protobufs | awk '{print $3}')
+          echo "Submodule commit: $SUBMODULE_COMMIT"
           
-          # Clone the protobufs submodule directly
-          git clone --depth 100 https://github.com/meshtastic/protobufs.git protobufs-temp
+          # Clone the protobufs submodule at that specific commit
+          git clone --depth 1 https://github.com/meshtastic/protobufs.git protobufs
+          cd protobufs
+          git fetch --depth 1 origin $SUBMODULE_COMMIT
+          git checkout $SUBMODULE_COMMIT
+          cd ..
           
-          # Copy from fork temp if they have custom protos
+          # Copy fork-specific protos if they exist
           if [ -d fork-full/protobufs ]; then
-            cp -r fork-full/protobufs/* protobufs-temp/ 2>/dev/null || true
+            cp -r fork-full/protobufs/* protobufs/ 2>/dev/null || true
           fi
           
           # Check for mesh_control.proto
-          ls protobufs-temp/meshtastic/ | grep mesh_control || echo "mesh_control.proto not in upstream"
+          ls protobufs/meshtastic/ | grep mesh_control || echo "mesh_control.proto not found"
           
-          # Copy from fork-specific protobufs if they exist
-          if [ -d fork-full/protobufs-fork ]; then
-            cp fork-full/protobufs-fork/meshtastic/mesh_control.proto protobufs-temp/meshtastic/ 2>/dev/null || true
-          fi
-          
-          rm -rf protobufs
-          mv protobufs-temp protobufs
           rm -rf fork-full
-          
-          ls protobufs/meshtastic/ | grep mesh
 
       - name: Get version
         id: version
