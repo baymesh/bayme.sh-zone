@@ -1,17 +1,12 @@
-name: Build and Publish
+name: DNS and Web Flasher
 
 on:
   push:
     branches: [ "main" ]
     paths:
-      - 'firmware/**'
       - 'web-flasher/**'
+      - 'dnsconfig.js'
   workflow_dispatch:
-    inputs:
-      skip_webflasher:
-        description: 'Skip web flasher build'
-        required: false
-        default: 'false'
 
 permissions:
   contents: read
@@ -23,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FIRMWARE_VERSION: '2.7.21'
+  FIRMWARE_PAGES_URL: 'https://baymesh.github.io/bayme.sh-firmware-pages'
 
 jobs:
   dns-update:
@@ -44,152 +39,8 @@ jobs:
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
 
-  build-firmware:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.full_version }}
-    steps:
-      - name: Checkout firmware
-        uses: actions/checkout@v4
-        with:
-          repository: baymesh/firmware
-          path: firmware
-          sparse-checkout: |
-            src
-            platformio.ini
-            configuration.h
-          sparse-checkout-cone-mode: false
-
-      - name: Clone protobufs from fork
-        run: |
-          cd firmware
-          
-          # Clone the upstream protobufs submodule
-          git clone --depth 100 https://github.com/meshtastic/protobufs.git protobufs
-          
-          # Get the submodule commit from the firmware repo
-          git clone --depth 100 https://github.com/baymesh/firmware.git fork-full
-          SUBMODULE_COMMIT=$(cd fork-full && git ls-tree HEAD protobufs | awk '{print $3}')
-          echo "Submodule commit: $SUBMODULE_COMMIT"
-          cd protobufs
-          git fetch --depth 1 origin $SUBMODULE_COMMIT
-          git checkout $SUBMODULE_COMMIT
-          cd ..
-          
-          # Download fork-specific mesh_control.proto from the fork's blob URL
-          # The fork has protobufs modified, get mesh_control.proto directly
-          curl -sL \
-            "https://github.com/baymesh/firmware/raw/develop/protobufs/meshtastic/mesh_control.proto" \
-            -o "protobufs/meshtastic/mesh_control.proto" || true
-          
-          curl -sL \
-            "https://github.com/baymesh/firmware/raw/develop/protobufs/meshtastic/mesh_control.options" \
-            -o "protobufs/meshtastic/mesh_control.options" || true
-          
-          # Check for mesh_control.proto
-          head -3 protobufs/meshtastic/mesh_control.proto
-          
-          rm -rf fork-full
-
-      - name: Get version
-        id: version
-        run: |
-          cd firmware
-          SHORT=$(git rev-parse --short HEAD)
-          echo "short=$SHORT" >> $GITHUB_OUTPUT
-          echo "full_version=${{ env.FIRMWARE_VERSION }}.$SHORT" >> $GITHUB_OUTPUT
-
-      - name: Install PlatformIO
-        run: pip install platformio
-
-      - name: Build nanopb
-        run: |
-          cd firmware
-          curl -sL https://jpa.kapsi.fi/nanopb/download/nanopb-0.4.9.1-linux-x86.tar.gz -o nanopb.tar.gz || curl -sL https://github.com/nanopb/nanopb/releases/download/0.4.9.1/nanopb-0.4.9.1-linux-x86.tar.gz -o nanopb.tar.gz
-          tar xzf nanopb.tar.gz
-          ls -la
-
-      - name: Regenerate protobufs
-        run: |
-          cd firmware/protobufs
-          ../nanopb-0.4.9.1-linux-x86/generator-bin/protoc --experimental_allow_proto3_optional "--nanopb_out=-S.cpp -v:../src/mesh/generated/" -I=. meshtastic/admin.proto meshtastic/channel.proto meshtastic/config.proto meshtastic/localonly.proto meshtastic/mesh.proto meshtastic/portnums.proto meshtastic/mesh_control.proto meshtastic/module_config.proto meshtastic/telemetry.proto
-
-      - name: Build RAK4631
-        run: |
-          cd firmware
-          pio run -e rak4631
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware-artifacts
-          path: firmware/.pio/build/rak4631/
-          retention-days: 30
-
-  publish-firmware:
-    needs: build-firmware
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: firmware-artifacts
-          path: _site/firmware/
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Create manifest
-        run: |
-          cd _site/firmware
-          
-          SHORT=$(ls *.uf2 2>/dev/null | head -1 | sed 's/firmware-rak4631-//' | sed 's/.uf2//')
-          VERSION="${{ env.FIRMWARE_VERSION }}.$SHORT"
-          
-          cat > firmware-${VERSION}.json << 'EOF'
-          {
-            "version": "%VERSION%",
-            "build_date": "%DATE%",
-            "targets": [
-              {
-                "board": "rak4631",
-                "firmware": "%FILE%"
-              }
-            ]
-          }
-          EOF
-          
-          sed -i "s/%VERSION%/$VERSION/g; s/%DATE%/$(date -u +%Y-%m-%dT%H:%M:%SZ)/g; s/%FILE%/firmware-rak4631-$VERSION.uf2/g" firmware-${VERSION}.json
-          
-          cat > release_notes.md << 'EOF'
-          # Meshtastic Fork Firmware - Baymesh
-          
-          ## Features
-          
-          ### MeshControl (Port 78)
-          Remote configuration via signed HMAC packets
-          
-          ### Relay Node
-          - Broadcast relay_node: Specify which node rebroadcasts first
-          - DM relay_node preference
-          
-          ### Hop Limit
-          - HOP_MAX = 64
-          
-          ## Building
-          Built from baymesh/bayme.sh-firmware
-          EOF
-          
-          ls -la
-
-      - name: Upload to Pages
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '_site'
-
   build-web-flasher:
-    needs: build-firmware
-    if: ${{ inputs.skip_webflasher != 'true' }}
+    needs: dns-update
     runs-on: ubuntu-latest
     steps:
       - name: Checkout web-flasher
@@ -216,7 +67,6 @@ jobs:
             plugins
             server
             i18n.config.ts
-            tailwind.config.js
             tsconfig.json
             eslint.config.mjs
             vitest.config.ts
@@ -224,33 +74,30 @@ jobs:
             .trunk
           sparse-checkout-cone-mode: false
 
-      - name: Download firmware
-        uses: actions/download-artifact@v4
-        with:
-          name: firmware-artifacts
-          path: web-flasher/public/data/firmware/
-
-      - name: Create firmware JSON
+      - name: Fetch latest firmware manifest
         run: |
-          cd web-flasher/public/data/firmware
+          mkdir -p web-flasher/public/data/firmware
           
-          SHORT=$(ls *.uf2 2>/dev/null | head -1 | sed 's/firmware-rak4631-//' | sed 's/.uf2//')
-          VERSION="${{ env.FIRMWARE_VERSION }}.$SHORT"
+          MANIFEST_URL="${{ env.FIRMWARE_PAGES_URL }}/release_notes.md"
+          echo "Checking for firmware at: $MANIFEST_URL"
           
-          cat > firmware-${VERSION}.json << EOF
-          {
-            "version": "$VERSION",
-            "targets": [
-              {
-                "board": "rak4631",
-                "firmware": "firmware-rak4631-$VERSION.uf2"
-              }
-            ]
-          }
-          EOF
+          HTTP_CODE=$(curl -sL -o /tmp/response.html -w "%{http_code}" "${{ env.FIRMWARE_PAGES_URL }}/")
+          echo "HTTP response code: $HTTP_CODE"
           
-          echo "Firmware files:"
-          ls -la
+          curl -sL "${{ env.FIRMWARE_PAGES_URL }}/" -o /tmp/firmware_list.html 2>/dev/null || true
+          
+          AVAILABLE_VERSIONS=$(curl -sL "${{ env.FIRMWARE_PAGES_URL }}/" 2>/dev/null | grep -oP 'firmware-[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          echo "Latest version found: $AVAILABLE_VERSIONS"
+          
+          if [ -n "$AVAILABLE_VERSIONS" ]; then
+            curl -sL "${{ env.FIRMWARE_PAGES_URL }}/${AVAILABLE_VERSIONS}/firmware-${AVAILABLE_VERSIONS}.json" \
+              -o "web-flasher/public/data/firmware/firmware-${AVAILABLE_VERSIONS}.json" || true
+            echo "Downloaded manifest for ${AVAILABLE_VERSIONS}"
+            cat "web-flasher/public/data/firmware/firmware-${AVAILABLE_VERSIONS}.json" || true
+          fi
+          
+          echo "Firmware directory contents:"
+          ls -la web-flasher/public/data/firmware/
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
