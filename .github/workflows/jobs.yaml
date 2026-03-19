@@ -23,6 +23,10 @@ env:
 jobs:
   dns-update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Install DNS Control
@@ -42,12 +46,23 @@ jobs:
   build-web-flasher:
     needs: dns-update
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
     steps:
-      - name: Checkout web-flasher
+      - name: Checkout zone repo (for gh-pages push target)
+        uses: actions/checkout@v4
+        with:
+          repository: baymesh/bayme.sh-zone
+          path: zone
+          fetch-depth: 1
+
+      - name: Checkout web-flasher source
         uses: actions/checkout@v4
         with:
           repository: baymesh/web-flasher
-          path: web-flasher
+          path: zone/web-flasher
           sparse-checkout: |
             app.vue
             components
@@ -76,28 +91,20 @@ jobs:
 
       - name: Fetch latest firmware manifest
         run: |
-          mkdir -p web-flasher/public/data/firmware
-          
-          MANIFEST_URL="${{ env.FIRMWARE_PAGES_URL }}/release_notes.md"
-          echo "Checking for firmware at: $MANIFEST_URL"
-          
-          HTTP_CODE=$(curl -sL -o /tmp/response.html -w "%{http_code}" "${{ env.FIRMWARE_PAGES_URL }}/")
-          echo "HTTP response code: $HTTP_CODE"
-          
-          curl -sL "${{ env.FIRMWARE_PAGES_URL }}/" -o /tmp/firmware_list.html 2>/dev/null || true
+          mkdir -p zone/web-flasher/public/data/firmware
           
           AVAILABLE_VERSIONS=$(curl -sL "${{ env.FIRMWARE_PAGES_URL }}/" 2>/dev/null | grep -oP 'firmware-[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
           echo "Latest version found: $AVAILABLE_VERSIONS"
           
           if [ -n "$AVAILABLE_VERSIONS" ]; then
             curl -sL "${{ env.FIRMWARE_PAGES_URL }}/${AVAILABLE_VERSIONS}/firmware-${AVAILABLE_VERSIONS}.json" \
-              -o "web-flasher/public/data/firmware/firmware-${AVAILABLE_VERSIONS}.json" || true
+              -o "zone/web-flasher/public/data/firmware/firmware-${AVAILABLE_VERSIONS}.json" || true
             echo "Downloaded manifest for ${AVAILABLE_VERSIONS}"
-            cat "web-flasher/public/data/firmware/firmware-${AVAILABLE_VERSIONS}.json" || true
+            cat "zone/web-flasher/public/data/firmware/firmware-${AVAILABLE_VERSIONS}.json" || true
           fi
           
           echo "Firmware directory contents:"
-          ls -la web-flasher/public/data/firmware/
+          ls -la zone/web-flasher/public/data/firmware/
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -111,17 +118,17 @@ jobs:
 
       - name: Install deps
         run: |
-          cd web-flasher
+          cd zone/web-flasher
           pnpm install --frozen-lockfile
 
       - name: Build
         run: |
-          cd web-flasher
+          cd zone/web-flasher
           pnpm run build
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./web-flasher/.output/public
+          publish_dir: ./zone/web-flasher/.output/public
           destination_dir: flasher
