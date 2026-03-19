@@ -64,17 +64,34 @@ jobs:
         run: |
           cd firmware
           git clone --depth 100 https://github.com/baymesh/firmware.git fork-full
-          ls fork-full/
-          ls fork-full/protobufs 2>/dev/null || echo "No protobufs dir"
-          ls fork-full/protobufs-fork 2>/dev/null || echo "No protobufs-fork dir"
-          cp -r fork-full/protobufs ./protobufs-from-fork || true
-          cp -r fork-full/protobufs-fork ./protobufs-from-fork-fork || true
-          mkdir -p protobufs
-          cp -r protobufs-from-fork/* protobufs/ 2>/dev/null || true
-          cp -r protobufs-from-fork-fork/* protobufs/ 2>/dev/null || true
-          rm -rf fork-full protobufs-from-fork protobufs-from-fork-fork
-          ls protobufs/ 2>/dev/null || echo "protobufs still empty"
-          ls protobufs/meshtastic/ | head -5 2>/dev/null || echo "No meshtastic dir"
+          
+          # Check if protobufs is a submodule
+          if [ -f fork-full/protobufs ]; then
+            echo "protobufs is a file (submodule reference)"
+            cat fork-full/protobufs
+          fi
+          
+          # Clone the protobufs submodule directly
+          git clone --depth 100 https://github.com/meshtastic/protobufs.git protobufs-temp
+          
+          # Copy from fork temp if they have custom protos
+          if [ -d fork-full/protobufs ]; then
+            cp -r fork-full/protobufs/* protobufs-temp/ 2>/dev/null || true
+          fi
+          
+          # Check for mesh_control.proto
+          ls protobufs-temp/meshtastic/ | grep mesh_control || echo "mesh_control.proto not in upstream"
+          
+          # Copy from fork-specific protobufs if they exist
+          if [ -d fork-full/protobufs-fork ]; then
+            cp fork-full/protobufs-fork/meshtastic/mesh_control.proto protobufs-temp/meshtastic/ 2>/dev/null || true
+          fi
+          
+          rm -rf protobufs
+          mv protobufs-temp protobufs
+          rm -rf fork-full
+          
+          ls protobufs/meshtastic/ | grep mesh
 
       - name: Get version
         id: version
