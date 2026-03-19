@@ -1,0 +1,14 @@
+{
+  "title": "MeshControl Fork",
+  "image": "./logo.svg",
+  "vendorCobrandingTag": "",
+  "backGroundColor": "#1a1a2e",
+  "textColor": "#FFFFFF",
+  "primaryColor": "#e94560",
+  "secondaryColor": "#0f3460",
+  "release": {
+    "isPrerelease": true,
+    "version": "2.7.21.3a14be7",
+    "githubioPrefix": "fork"
+  }
+}
