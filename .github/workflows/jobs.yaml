@@ -53,11 +53,11 @@ jobs:
       - name: Checkout firmware
         uses: actions/checkout@v4
         with:
-          repository: baymesh/bayme.sh-firmware
+          repository: baymesh/firmware
           path: firmware
           sparse-checkout: |
             src
-            protobufs-fork
+            protobufs
             platformio.ini
             configuration.h
           sparse-checkout-cone-mode: false
@@ -81,7 +81,7 @@ jobs:
 
       - name: Regenerate protobufs
         run: |
-          cd firmware/protobufs-fork
+          cd firmware/protobufs
           ../nanopb-0.4.9.1/generator-bin/protoc --experimental_allow_proto3_optional \
             "--nanopb_out=-S.cpp -v:../src/mesh/generated/" \
             -I=. meshtastic/*.proto
