@@ -56,11 +56,15 @@ jobs:
           path: firmware
           sparse-checkout: |
             src
-            protobufs
             platformio.ini
             configuration.h
           sparse-checkout-cone-mode: false
-          submodules: true
+
+      - name: Clone protobufs submodule
+        run: |
+          cd firmware
+          git clone --depth 1 https://github.com/meshtastic/protobufs.git protobufs
+          ls protobufs/meshtastic/
 
       - name: Get version
         id: version
