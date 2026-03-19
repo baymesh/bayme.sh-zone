@@ -60,6 +60,7 @@ jobs:
             platformio.ini
             configuration.h
           sparse-checkout-cone-mode: false
+          submodules: true
 
       - name: Get version
         id: version
