@@ -64,27 +64,28 @@ jobs:
         run: |
           cd firmware
           
+          # Clone the upstream protobufs submodule
+          git clone --depth 100 https://github.com/meshtastic/protobufs.git protobufs
+          
           # Get the submodule commit from the firmware repo
           git clone --depth 100 https://github.com/baymesh/firmware.git fork-full
-          
-          # Read the submodule reference
-          SUBMODULE_COMMIT=$(git ls-tree HEAD protobufs | awk '{print $3}')
+          SUBMODULE_COMMIT=$(cd fork-full && git ls-tree HEAD protobufs | awk '{print $3}')
           echo "Submodule commit: $SUBMODULE_COMMIT"
-          
-          # Clone the protobufs submodule at that specific commit
-          git clone --depth 1 https://github.com/meshtastic/protobufs.git protobufs
           cd protobufs
           git fetch --depth 1 origin $SUBMODULE_COMMIT
           git checkout $SUBMODULE_COMMIT
           cd ..
           
-          # Copy fork-specific protos if they exist
-          if [ -d fork-full/protobufs ]; then
-            cp -r fork-full/protobufs/* protobufs/ 2>/dev/null || true
-          fi
+          # Download mesh_control.proto from the fork's latest commit
+          curl -sL "https://raw.githubusercontent.com/baymesh/firmware/develop/protobufs/meshtastic/mesh_control.proto" -o protobufs/meshtastic/mesh_control.proto
+          curl -sL "https://raw.githubusercontent.com/baymesh/firmware/develop/protobufs/meshtastic/mesh_control.options" -o protobufs/meshtastic/mesh_control.options
+          
+          # Also download updated config.proto, localonly.proto, mesh.proto from fork if they exist
+          curl -sL "https://raw.githubusercontent.com/baymesh/firmware/develop/protobufs/meshtastic/config.proto" -o protobufs/meshtastic/config.proto
+          curl -sL "https://raw.githubusercontent.com/baymesh/firmware/develop/protobufs/meshtastic/localonly.proto" -o protobufs/meshtastic/localonly.proto
           
           # Check for mesh_control.proto
-          ls protobufs/meshtastic/ | grep mesh_control || echo "mesh_control.proto not found"
+          ls protobufs/meshtastic/ | grep mesh_control
           
           rm -rf fork-full
 
