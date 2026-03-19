@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FIRMWARE_PAGES_URL: 'https://baymesh.github.io/bayme.sh-firmware-pages'
+  FIRMWARE_PAGES_URL: 'https://firmware.bayme.sh'
 
 jobs:
   dns-update:
