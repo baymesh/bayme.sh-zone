@@ -76,17 +76,18 @@ jobs:
           git checkout $SUBMODULE_COMMIT
           cd ..
           
-          # Download fork-specific protos using curl with proper headers
-          # Only download mesh_control.proto which doesn't exist in upstream
-          for proto_file in mesh_control.proto mesh_control.options; do
-            echo "Downloading $proto_file..."
-            curl -sL -H "Accept: application/vnd.github.v3.raw" \
-              "https://api.github.com/repos/baymesh/firmware/contents/protobufs/meshtastic/$proto_file?ref=develop" \
-              -o "protobufs/meshtastic/$proto_file" || echo "Failed to download $proto_file"
-          done
+          # Download fork-specific mesh_control.proto from the fork's blob URL
+          # The fork has protobufs modified, get mesh_control.proto directly
+          curl -sL \
+            "https://github.com/baymesh/firmware/raw/develop/protobufs/meshtastic/mesh_control.proto" \
+            -o "protobufs/meshtastic/mesh_control.proto" || true
+          
+          curl -sL \
+            "https://github.com/baymesh/firmware/raw/develop/protobufs/meshtastic/mesh_control.options" \
+            -o "protobufs/meshtastic/mesh_control.options" || true
           
           # Check for mesh_control.proto
-          ls protobufs/meshtastic/ | grep mesh_control
+          head -3 protobufs/meshtastic/mesh_control.proto
           
           rm -rf fork-full
 
