@@ -46,7 +46,6 @@ jobs:
 
   build-firmware:
     runs-on: ubuntu-latest
-    container: python:3.11-slim
     outputs:
       version: ${{ steps.version.outputs.full_version }}
     steps:
@@ -115,7 +114,6 @@ jobs:
         run: |
           cd _site/firmware
           
-          # Get version from file
           SHORT=$(ls *.uf2 2>/dev/null | head -1 | sed 's/firmware-rak4631-//' | sed 's/.uf2//')
           VERSION="${{ env.FIRMWARE_VERSION }}.$SHORT"
           
