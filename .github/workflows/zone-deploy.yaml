@@ -65,9 +65,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Checkout web-flasher source
+      - name: Remove existing web-flasher
         run: |
           rm -rf zone/web-flasher 2>/dev/null || true
+
+      - name: Checkout web-flasher source
         uses: actions/checkout@v4
         with:
           repository: baymesh/web-flasher
