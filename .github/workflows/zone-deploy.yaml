@@ -140,7 +140,15 @@ jobs:
       - name: Build
         run: |
           cd zone/web-flasher
+          echo "=== Current version in types/resources.ts ==="
+          grep -E "currentPrereleaseId|firmwareRepo" types/resources.ts
+          rm -rf .nuxt .output
           pnpm run build
+          echo "=== Checking built JS for version ==="
+          JS_FILE=$(find .output -name "*.js" | head -1)
+          if [ -n "$JS_FILE" ]; then
+            grep -o "2\.7\.21\.[0-9a-f]*" "$JS_FILE" | head -3 || echo "Version not found in JS"
+          fi
 
       - name: Deploy to main branch
         env:
@@ -154,6 +162,11 @@ jobs:
           cp web-flasher/.output/public/.nojekyll . 2>/dev/null || echo "" > .nojekyll
           printf 'flasher.bayme.sh\n' > flasher/CNAME
           
+          echo "=== Files to be committed ==="
+          ls -la flasher/ | head -10
+          
           git add flasher .nojekyll
-          git commit -m "Deploy flasher $(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
-          git push origin main || true
+          git status
+          git commit -m "Deploy flasher $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
+          git push origin main
+          echo "=== Deployment complete ==="
