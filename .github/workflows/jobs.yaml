@@ -90,17 +90,30 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Fetch latest firmware manifest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p zone/web-flasher/public/data/firmware
           
-          AVAILABLE_VERSIONS=$(curl -sL "${{ env.FIRMWARE_PAGES_URL }}/" 2>/dev/null | grep -oP 'firmware-[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
-          echo "Latest version found: $AVAILABLE_VERSIONS"
+          AVAIL_DIR=$(curl -sL -H "Authorization: token ${GITHUB_TOKEN}" \
+            "https://api.github.com/repos/baymesh/bayme.sh-firmware-pages/contents/" \
+            2>/dev/null | grep -oP '"name":\s*"firmware-[0-9]+\.[0-9]+\.[0-9]+"' \
+            | grep -oP 'firmware-[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          echo "Latest firmware dir: $AVAIL_DIR"
           
-          if [ -n "$AVAILABLE_VERSIONS" ]; then
-            curl -sL "${{ env.FIRMWARE_PAGES_URL }}/${AVAILABLE_VERSIONS}/firmware-${AVAILABLE_VERSIONS}.json" \
-              -o "zone/web-flasher/public/data/firmware/firmware-${AVAILABLE_VERSIONS}.json" || true
-            echo "Downloaded manifest for ${AVAILABLE_VERSIONS}"
-            cat "zone/web-flasher/public/data/firmware/firmware-${AVAILABLE_VERSIONS}.json" || true
+          if [ -n "$AVAIL_DIR" ]; then
+            curl -sL -H "Authorization: token ${GITHUB_TOKEN}" \
+              "https://api.github.com/repos/baymesh/bayme.sh-firmware-pages/contents/${AVAIL_DIR}" \
+              2>/dev/null | python3 -c "
+import json,sys
+files = json.load(sys.stdin)
+for f in files:
+    if f['name'].endswith('.json') and f['name'].startswith('firmware-rak'):
+        print(f['download_url'])
+        break
+" | xargs curl -sL -o "zone/web-flasher/public/data/firmware/firmware-${AVAIL_DIR}.json" || true
+            echo "Downloaded manifest for ${AVAIL_DIR}"
+            cat "zone/web-flasher/public/data/firmware/firmware-${AVAIL_DIR}.json" || true
           fi
           
           echo "Firmware directory contents:"
