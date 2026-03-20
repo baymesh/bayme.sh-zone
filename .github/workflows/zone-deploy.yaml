@@ -142,6 +142,8 @@ jobs:
           cd zone/web-flasher
           echo "=== Current version in types/resources.ts ==="
           grep -E "currentPrereleaseId|firmwareRepo" types/resources.ts
+          echo "=== Checking Firmware.vue for fix ==="
+          grep -c "couldntFetchFirmwareApi.*prereleaseUnlocked" components/Firmware.vue || echo "Fix not found in Firmware.vue"
           rm -rf .nuxt .output
           pnpm run build
           echo "=== Checking built JS for version ==="
@@ -149,6 +151,8 @@ jobs:
           if [ -n "$JS_FILE" ]; then
             grep -o "2\.7\.21\.[0-9a-f]*" "$JS_FILE" | head -3 || echo "Version not found in JS"
           fi
+          echo "=== Checking built JS for fix ==="
+          grep -c "couldntFetchFirmwareApi.*prereleaseUnlocked" .output/public/_nuxt/*.js || echo "Fix not found in built JS"
 
       - name: Deploy to main branch
         env:
