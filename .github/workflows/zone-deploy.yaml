@@ -1,11 +1,6 @@
 name: DNS and Web Flasher
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'web-flasher/**'
-      - 'dnsconfig.js'
   workflow_dispatch:
 
 permissions:
