@@ -103,9 +103,9 @@ jobs:
           
           if [ -n "$AVAIL_JSON" ]; then
             curl -sL "https://raw.githubusercontent.com/baymesh/bayme.sh-firmware-pages/gh-pages/${AVAIL_JSON}" \
-              -o "zone/web-flasher/public/data/firmware/firmware-${AVAIL_JSON}" || true
+              -o "zone/web-flasher/public/data/firmware/${AVAIL_JSON}" || true
             echo "Downloaded manifest for ${AVAIL_JSON}"
-            cat "zone/web-flasher/public/data/firmware/firmware-${AVAIL_JSON}" || true
+            cat "zone/web-flasher/public/data/firmware/${AVAIL_JSON}" || true
           fi
           
           echo "Firmware directory contents:"
