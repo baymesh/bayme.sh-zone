@@ -66,6 +66,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout web-flasher source
+        run: |
+          rm -rf zone/web-flasher 2>/dev/null || true
         uses: actions/checkout@v4
         with:
           repository: baymesh/web-flasher
