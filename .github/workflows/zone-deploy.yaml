@@ -102,16 +102,13 @@ jobs:
           echo "Latest firmware dir: $AVAIL_DIR"
           
           if [ -n "$AVAIL_DIR" ]; then
-            curl -sL -H "Authorization: token ${GITHUB_TOKEN}" \
+            MANIFEST_URL=$(curl -sL -H "Authorization: token ${GITHUB_TOKEN}" \
               "https://api.github.com/repos/baymesh/bayme.sh-firmware-pages/contents/${AVAIL_DIR}" \
-              2>/dev/null | python3 -c "
-import json,sys
-files = json.load(sys.stdin)
-for f in files:
-    if f['name'].endswith('.json') and f['name'].startswith('firmware-rak'):
-        print(f['download_url'])
-        break
-" | xargs curl -sL -o "zone/web-flasher/public/data/firmware/firmware-${AVAIL_DIR}.json" || true
+              2>/dev/null | python3 -c "import json,sys; [print('https://raw.githubusercontent.com/baymesh/bayme.sh-firmware-pages/gh-pages/${AVAIL_DIR}/'+f['name']) for f in json.load(sys.stdin) if f['name'].endswith('.json') and 'rak' in f['name']]" | head -1)
+            echo "Manifest URL: $MANIFEST_URL"
+            if [ -n "$MANIFEST_URL" ]; then
+              curl -sL "$MANIFEST_URL" -o "zone/web-flasher/public/data/firmware/firmware-${AVAIL_DIR}.json" || true
+            fi
             echo "Downloaded manifest for ${AVAIL_DIR}"
             cat "zone/web-flasher/public/data/firmware/firmware-${AVAIL_DIR}.json" || true
           fi
