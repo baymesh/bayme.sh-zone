@@ -136,7 +136,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
+          git fetch origin main
           git checkout main
+          git reset --hard origin/main
           
           rm -rf .gitignore web-flasher/.git 2>/dev/null || true
           mkdir -p flasher
@@ -145,5 +147,5 @@ jobs:
           printf 'flasher.bayme.sh\n' > flasher/CNAME
           
           git add flasher .nojekyll
-          git commit -m "Deploy flasher $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push origin main
+          git commit -m "Deploy flasher $(date -u +%Y-%m-%dT%H:%M:%SZ)" || true
+          git push origin main || true
