@@ -95,22 +95,17 @@ jobs:
         run: |
           mkdir -p zone/web-flasher/public/data/firmware
           
-          AVAIL_DIR=$(curl -sL -H "Authorization: token ${GITHUB_TOKEN}" \
+          AVAIL_JSON=$(curl -sL -H "Authorization: token ${GITHUB_TOKEN}" \
             "https://api.github.com/repos/baymesh/bayme.sh-firmware-pages/contents/" \
-            2>/dev/null | grep -oP '"name":\s*"firmware-[0-9]+\.[0-9]+\.[0-9]+"' \
-            | grep -oP 'firmware-[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1)
-          echo "Latest firmware dir: $AVAIL_DIR"
+            2>/dev/null | grep -oP '"name":\s*"firmware-[0-9]+\.[0-9]+\.[0-9]+\.[0-9a-f]+\.json"' \
+            | grep -oP 'firmware-[0-9]+\.[0-9]+\.[0-9]+\.[0-9a-f]+\.json' | sort -V | tail -1)
+          echo "Latest firmware manifest: $AVAIL_JSON"
           
-          if [ -n "$AVAIL_DIR" ]; then
-            MANIFEST_URL=$(curl -sL -H "Authorization: token ${GITHUB_TOKEN}" \
-              "https://api.github.com/repos/baymesh/bayme.sh-firmware-pages/contents/${AVAIL_DIR}" \
-              2>/dev/null | python3 -c "import json,sys; [print('https://raw.githubusercontent.com/baymesh/bayme.sh-firmware-pages/gh-pages/${AVAIL_DIR}/'+f['name']) for f in json.load(sys.stdin) if f['name'].endswith('.json') and 'rak' in f['name']]" | head -1)
-            echo "Manifest URL: $MANIFEST_URL"
-            if [ -n "$MANIFEST_URL" ]; then
-              curl -sL "$MANIFEST_URL" -o "zone/web-flasher/public/data/firmware/firmware-${AVAIL_DIR}.json" || true
-            fi
-            echo "Downloaded manifest for ${AVAIL_DIR}"
-            cat "zone/web-flasher/public/data/firmware/firmware-${AVAIL_DIR}.json" || true
+          if [ -n "$AVAIL_JSON" ]; then
+            curl -sL "https://raw.githubusercontent.com/baymesh/bayme.sh-firmware-pages/gh-pages/${AVAIL_JSON}" \
+              -o "zone/web-flasher/public/data/firmware/firmware-${AVAIL_JSON}" || true
+            echo "Downloaded manifest for ${AVAIL_JSON}"
+            cat "zone/web-flasher/public/data/firmware/firmware-${AVAIL_JSON}" || true
           fi
           
           echo "Firmware directory contents:"
