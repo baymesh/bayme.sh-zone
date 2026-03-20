@@ -143,8 +143,7 @@ jobs:
           cp -r web-flasher/.output/public/. flasher/
           cp web-flasher/.output/public/.nojekyll . 2>/dev/null || echo "" > .nojekyll
           printf 'flasher.bayme.sh\n' > flasher/CNAME
-          rm -f CNAME
           
-          git add flasher .nojekyll CNAME
+          git add flasher .nojekyll
           git commit -m "Deploy flasher $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           git push origin main
