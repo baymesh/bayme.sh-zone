@@ -76,22 +76,23 @@ jobs:
           path: zone/web-flasher
           sparse-checkout: |
             app.vue
-            components
-            composables
-            i18n
+            components/*
+            components/targets/*
+            composables/*
+            i18n/*
             nuxt.config.ts
             package.json
             pnpm-lock.yaml
-            public
-            stores
+            public/*
+            stores/*
             tailwind.config.js
-            types
-            utils
+            types/*
+            utils/*
             README.md
-            assets
-            locales
-            plugins
-            server
+            assets/*
+            locales/*
+            plugins/*
+            server/*
             i18n.config.ts
             tsconfig.json
             eslint.config.mjs
