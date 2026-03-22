@@ -22,8 +22,10 @@ jobs:
       contents: read
       pages: write
       id-token: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install DNS Control
         uses: gacts/install-dnscontrol@v1
       - name: Run DNSControl
@@ -45,9 +47,11 @@ jobs:
       contents: write
       pages: write
       id-token: write
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout zone repo (for gh-pages push target)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: baymesh/bayme.sh-zone
           path: zone
@@ -70,7 +74,7 @@ jobs:
           rm -rf zone/web-flasher 2>/dev/null || true
 
       - name: Checkout web-flasher source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: baymesh/web-flasher
           path: zone/web-flasher
