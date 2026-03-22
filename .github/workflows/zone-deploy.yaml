@@ -14,6 +14,7 @@ concurrency:
 
 env:
   FIRMWARE_PAGES_URL: 'https://firmware.bayme.sh'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   dns-update:
@@ -22,8 +23,6 @@ jobs:
       contents: read
       pages: write
       id-token: write
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v6
       - name: Install DNS Control
@@ -47,8 +46,6 @@ jobs:
       contents: write
       pages: write
       id-token: write
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout zone repo (for gh-pages push target)
         uses: actions/checkout@v6
