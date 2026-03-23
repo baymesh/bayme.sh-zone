@@ -2,6 +2,8 @@ name: DNS and Web Flasher
 
 on:
   workflow_dispatch:
+  repository_dispatch:
+    types: [rebuild-flasher]
 
 permissions:
   contents: read
@@ -18,6 +20,7 @@ env:
 
 jobs:
   dns-update:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -40,7 +43,7 @@ jobs:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
 
   build-web-flasher:
-    needs: dns-update
+    # Runs independently — no longer blocked by dns-update
     runs-on: ubuntu-latest
     permissions:
       contents: write
