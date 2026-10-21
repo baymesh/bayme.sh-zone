@@ -1,7 +1,8 @@
 var REG_NONE = NewRegistrar("none");
-var DNS_PB = NewDnsProvider("porkbun")
+var DNS_CF = NewDnsProvider("cloudflare")
 
-D("bayme.sh", REG_NONE, DnsProvider(DNS_PB),
+/* All records unproxied (no orange globe) by default */
+D("bayme.sh", REG_NONE, DnsProvider(DNS_CF),
     A("@", "185.199.108.153"),
     A("@", "185.199.109.153"),
     A("@", "185.199.110.153"),
@@ -13,9 +14,11 @@ D("bayme.sh", REG_NONE, DnsProvider(DNS_PB),
     CNAME("www", "@"),
     CNAME("flasher", "baymesh.github.io."),
     CNAME("firmware", "baymesh.github.io."),
-    CNAME("_dmarc", "dmarc.protection.outlook.com."),
+    TXT("_dmarc", "v=DMARC1; p=none; rua=mailto:d6c2f436f2bd4bf39c06f1f3cfdb7202@dmarc-reports.cloudflare.net"),
     CNAME("meshyview", "meshyview.pages.dev."),
     TXT("@", "replit-verify=63ff4ec2-b29c-44e4-a746-52664ece449e"),
+    TXT("@", "v=spf1 -all"),
+    TXT("*._domainkey", "v=DKIM1; p="),
     TXT("app", "replit-verify=26fd5897-f24e-4e00-8f71-9dd3c3c0fd70"),
     TXT("_atproto", "did=did:plc:pmh7e7uvshazl4rlphmn4oyf"),
     A("app", "34.111.179.208"),

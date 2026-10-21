@@ -33,8 +33,7 @@ jobs:
       - name: Run DNSControl
         run: dnscontrol push
         env:
-          PORKBUN_API_KEY: ${{ secrets.PORKBUN_API_KEY }}
-          PORKBUN_SECRET_KEY: ${{ secrets.PORKBUN_SECRET_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Actions Status Discord
         uses: sarisia/actions-status-discord@v1.14.5

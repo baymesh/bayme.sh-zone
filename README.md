@@ -105,8 +105,7 @@ In **baymesh/bayme.sh-zone**:
 ### Step 5: Add Secrets
 
 In **baymesh/bayme.sh-zone** Settings → Secrets:
-- `PORKBUN_API_KEY`
-- `PORKBUN_SECRET_KEY`
+- `CLOUDFLARE_API_TOKEN` (Zone:DNS:Edit + Zone:Zone:Read on bayme.sh)
 - `DISCORD_WEBHOOK` (optional)
 
 ### Step 6: Trigger First Build
