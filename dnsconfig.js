@@ -1,13 +1,13 @@
 var REG_NONE = NewRegistrar("none");
 var DNS_CF = NewDnsProvider("cloudflare")
 
-/* All records unproxied (no orange globe) by default.
-   bayme.sh, www and flasher are Workers custom domains: Cloudflare manages their A/AAAA/CNAME records,
-   so DNSControl must leave them alone. */
+/* All records unproxied (no orange globe) by default. */
 D("bayme.sh", REG_NONE, DnsProvider(DNS_CF),
-    IGNORE("@", "A,AAAA,CNAME"),
-    IGNORE("www", "A,AAAA,CNAME"),
-    IGNORE("flasher", "A,AAAA,CNAME"),
+    /* Workers custom domains (baymesh-website, baymesh-flasher). Cloudflare creates these proxied placeholder
+       records itself when the Worker deploys; they are mirrored here so DNSControl doesn't delete them. */
+    AAAA("@", "100::", CF_PROXY_ON),
+    AAAA("www", "100::", CF_PROXY_ON),
+    AAAA("flasher", "100::", CF_PROXY_ON),
     CNAME("firmware", "baymesh.github.io."),
     TXT("_dmarc", "v=DMARC1; p=none; rua=mailto:d6c2f436f2bd4bf39c06f1f3cfdb7202@dmarc-reports.cloudflare.net"),
     CNAME("meshyview", "meshyview.pages.dev."),
