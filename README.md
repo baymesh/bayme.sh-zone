@@ -1,144 +1,27 @@
 # bayme.sh DNS Zone
 
-Infrastructure-as-Code for the BayMe.sh DNS Zone with integrated web flasher for MeshControl fork firmware.
+Infrastructure-as-Code for the BayMe.sh DNS zone, managed with [DNSControl](https://dnscontrol.org/).
 
-## Domains
+This repo holds DNS only. The sites it points at live in their own repos and deploy themselves.
 
-- **bayme.sh** - Main domain
-- **flasher.bayme.sh** - Web flasher for MeshControl fork firmware
+## Sites
 
-## Web Flasher
+| Hostname | Repo | Hosting |
+|----------|------|---------|
+| bayme.sh, www.bayme.sh | [baymesh/baymesh-static-website](https://github.com/baymesh/baymesh-static-website) (Hugo) | Cloudflare Worker `baymesh-website`, built and deployed by Workers Builds on push to `main` |
+| flasher.bayme.sh | [baymesh/web-flasher](https://github.com/baymesh/web-flasher) (Nuxt) | Cloudflare Worker `baymesh-flasher`, built and deployed by Workers Builds on push to `main` |
+| firmware.bayme.sh | [baymesh/bayme.sh-firmware-pages](https://github.com/baymesh/bayme.sh-firmware-pages) | GitHub Pages |
 
-The web flasher is built from [baymesh/web-flasher](https://github.com/baymesh/web-flasher) and hosts fork firmware from [baymesh/bayme.sh-firmware](https://github.com/baymesh/bayme.sh-firmware).
+`bayme.sh`, `www` and `flasher` are Workers custom domains (declared in each repo's `wrangler.jsonc`), so Cloudflare creates and manages those DNS records. They are intentionally absent from `dnsconfig.js`.
 
-### Firmware Features
+The site Worker also proxies Plausible events at `/m/e` so ad blockers don't drop them.
 
-- **MeshControl (Port 78)**: Remote configuration via signed HMAC packets
-- **Relay Node**: Control which nodes rebroadcast messages
-- **HOP_MAX=64**: Reduced hop limit
+The flasher bundles the newest `firmware-*.json` from `bayme.sh-firmware-pages` at build time (`scripts/cf-build.sh` in `web-flasher`). Re-run its build to pick up a newer manifest.
 
-### Architecture
+## Updating DNS
 
-```
-bayme.sh-zone/
-├── .github/workflows/
-│   └── jobs.yaml     # Builds firmware + web flasher
-├── dnsconfig.js      # DNS configuration
-└── README.md
+1. Edit `dnsconfig.js`.
+2. Push to `main`.
+3. Run the **DNS** workflow (`gh workflow run zone-deploy.yaml`), which runs `dnscontrol push`.
 
-baymesh/web-flasher/
-├── types/resources.ts  # Firmware version config
-├── public/data/        # Firmware artifacts
-└── ... (Nuxt.js app)
-
-baymesh/bayme.sh-firmware/
-├── src/mesh/          # Firmware source
-├── protobufs-fork/    # Custom protobufs
-└── platformio.ini     # Build config
-```
-
-### Workflow
-
-1. Push to `firmware/` or `web-flasher/` triggers builds
-2. GitHub Actions builds RAK4631 firmware and web flasher
-3. Artifacts published to GitHub Pages
-
-### Manual Trigger
-
-To trigger a build manually:
-```bash
-gh workflow run jobs.yaml
-```
-
-## DNS Records
-
-| Record | Value | Purpose |
-|--------|-------|---------|
-| A @ | 185.199.108-111.153 | GitHub Pages |
-| CNAME flasher | baymesh.github.io | Web flasher |
-| CNAME meshyview | meshyview.pages.dev | Mesh viewer |
-| A app | 34.111.179.208 | App server |
-| A mqtt | 216.218.222.55-57 | MQTT brokers |
-
-## Required Repos
-
-1. **baymesh/bayme.sh-firmware** - Forked Meshtastic firmware
-2. **baymesh/web-flasher** - Forked web flasher
-3. **baymesh/bayme.sh-zone** - This repo (DNS + CI/CD)
-
-## Setup
-
-### Step 1: Fork Repositories
-
-Fork these repos to your GitHub:
-- https://github.com/meshtastic/firmware → baymesh/bayme.sh-firmware
-- https://github.com/meshtastic/web-flasher → baymesh/web-flasher
-
-### Step 2: Update Forked Firmware
-
-Copy the modified files from your firmware-Fork to baymesh/bayme.sh-firmware:
-- `src/mesh/MeshTypes.h` (HOP_MAX = 64)
-- `src/mesh/MeshService.cpp` (relay_node support)
-- `src/mesh/NextHopRouter.cpp` (relay_node logic)
-- `protobufs-fork/` (custom protobufs)
-- Any other modifications
-
-### Step 3: Update Forked Web Flasher
-
-Update `types/resources.ts` with your firmware repo URL:
-```typescript
-export const forkConfig = {
-  enabled: true,
-  firmwareRepo: 'https://raw.githubusercontent.com/baymesh/bayme.sh-zone/gh-pages',
-  githubRepo: 'https://github.com/baymesh/bayme.sh-firmware',
-  // ...
-}
-```
-
-### Step 4: Configure GitHub Pages
-
-In **baymesh/bayme.sh-zone**:
-1. Go to Settings → Pages
-2. Source: Deploy from a branch
-3. Branch: `gh-pages` / `(root)`
-
-### Step 5: Add Secrets
-
-In **baymesh/bayme.sh-zone** Settings → Secrets:
-- `CLOUDFLARE_API_TOKEN` (Zone:DNS:Edit + Zone:Zone:Read on bayme.sh)
-- `DISCORD_WEBHOOK` (optional)
-
-### Step 6: Trigger First Build
-
-```bash
-cd baymesh-zone
-gh workflow run jobs.yaml
-```
-
-## Usage
-
-1. Visit https://flasher.bayme.sh
-2. Select your device (RAK4631)
-3. Flash the MeshControl fork firmware
-
-## Contributing
-
-### Updating DNS
-
-1. Edit `dnsconfig.js`
-2. Commit and push
-3. GitHub Actions will automatically update DNS
-
-### Firmware Changes
-
-1. Update firmware repo
-2. Workflow auto-builds on push
-
-### Web Flasher Changes
-
-1. Update web-flasher repo
-2. Workflow auto-deploys changes
-
-## License
-
-DNS configuration managed with [DNSControl](https://dnscontrol.org/).
+Required secrets: `CLOUDFLARE_API_TOKEN` (Zone:DNS:Edit + Zone:Zone:Read on bayme.sh) and optionally `DISCORD_WEBHOOK`.

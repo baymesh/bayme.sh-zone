@@ -1,31 +1,19 @@
-name: DNS and Web Flasher
+name: DNS
 
 on:
   workflow_dispatch:
-  repository_dispatch:
-    types: [rebuild-flasher]
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 env:
-  FIRMWARE_PAGES_URL: 'https://firmware.bayme.sh'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   dns-update:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pages: write
-      id-token: write
     steps:
       - uses: actions/checkout@v6
       - name: Install DNS Control
@@ -40,130 +28,3 @@ jobs:
         if: always()
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
-
-  build-web-flasher:
-    # Runs independently — no longer blocked by dns-update
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pages: write
-      id-token: write
-    steps:
-      - name: Checkout zone repo (for gh-pages push target)
-        uses: actions/checkout@v6
-        with:
-          repository: baymesh/bayme.sh-zone
-          path: zone
-          fetch-depth: 1
-
-      - name: Reset zone repo to latest
-        run: |
-          cd zone
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/baymesh/bayme.sh-zone.git"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git checkout main
-          git reset --hard origin/main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Remove existing web-flasher
-        run: |
-          rm -rf zone/web-flasher 2>/dev/null || true
-
-      - name: Checkout web-flasher source
-        uses: actions/checkout@v6
-        with:
-          repository: baymesh/web-flasher
-          path: zone/web-flasher
-          sparse-checkout: |
-            app.vue
-            components/*
-            components/targets/*
-            composables/*
-            i18n/*
-            nuxt.config.ts
-            package.json
-            pnpm-lock.yaml
-            public/*
-            stores/*
-            tailwind.config.js
-            types/*
-            utils/*
-            README.md
-            assets/*
-            locales/*
-            plugins/*
-            server/*
-            i18n.config.ts
-            tsconfig.json
-            eslint.config.mjs
-            vitest.config.ts
-            .npmrc
-            .trunk
-          sparse-checkout-cone-mode: false
-
-      - name: Fetch latest firmware manifest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p zone/web-flasher/public/data/firmware
-          
-          AVAIL_JSON=$(curl -sL -H "Authorization: token ${GITHUB_TOKEN}" \
-            "https://api.github.com/repos/baymesh/bayme.sh-firmware-pages/contents/" \
-            2>/dev/null | grep -oP '"name":\s*"firmware-[0-9]+\.[0-9]+\.[0-9]+\.[0-9a-f]+\.json"' \
-            | grep -oP 'firmware-[0-9]+\.[0-9]+\.[0-9]+\.[0-9a-f]+\.json' | sort -V | tail -1)
-          echo "Latest firmware manifest: $AVAIL_JSON"
-          
-          if [ -n "$AVAIL_JSON" ]; then
-            curl -sL "https://raw.githubusercontent.com/baymesh/bayme.sh-firmware-pages/gh-pages/${AVAIL_JSON}" \
-              -o "zone/web-flasher/public/data/firmware/${AVAIL_JSON}" || true
-            echo "Downloaded manifest for ${AVAIL_JSON}"
-            cat "zone/web-flasher/public/data/firmware/${AVAIL_JSON}" || true
-          fi
-          
-          echo "Firmware directory contents:"
-          ls -la zone/web-flasher/public/data/firmware/
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Install deps
-        run: |
-          cd zone/web-flasher
-          pnpm install --frozen-lockfile
-
-      - name: Build
-        run: |
-          cd zone/web-flasher
-          rm -rf .nuxt .output
-          pnpm run build
-
-      - name: Deploy to main branch
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd zone
-          
-          rm -rf .gitignore web-flasher/.git 2>/dev/null || true
-          mkdir -p flasher
-          cp -r web-flasher/.output/public/. flasher/
-          cp web-flasher/.output/public/.nojekyll . 2>/dev/null || echo "" > .nojekyll
-          printf 'flasher.bayme.sh\n' > flasher/CNAME
-          
-          echo "=== Files to be committed ==="
-          ls -la flasher/ | head -10
-          
-          git add flasher .nojekyll
-          git status
-          git commit -m "Deploy flasher $(date -u +%Y-%m-%dT%H:%M:%SZ)" || echo "Nothing to commit"
-          git push origin main
-          echo "=== Deployment complete ==="
